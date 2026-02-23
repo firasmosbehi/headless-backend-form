@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: Headless Form Backend API
+  version: 0.1.0
+  description: |
+    Headless API for receiving form submissions and managing forms via API key authentication.
+servers:
+  - url: https://your-service.onrender.com
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service process is up
+  /ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service can reach dependencies
+        '503':
+          description: Dependency unavailable (for example, database)
+  /api/users/register:
+    post:
+      summary: Register user and issue first API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+        '409':
+          description: User already exists
+  /api/forms:
+    get:
+      summary: List forms for authenticated user
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List of forms
+    post:
+      summary: Create form
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, notify_email]
+              properties:
+                name:
+                  type: string
+                notify_email:
+                  type: string
+                  format: email
+                schema:
+                  type: object
+                  description: |
+                    Optional field-level validation rules applied to public submissions.
+                    Example:
+                    {
+                      "email": { "type": "string", "required": true },
+                      "age": { "type": "number", "minimum": 18 }
+                    }
+      responses:
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+  /api/forms/{id}/submissions:
+    get:
+      summary: List submissions for a form
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List submissions with pagination metadata
+        '400':
+          description: Invalid pagination query parameters
+  /api/keys:
+    get:
+      summary: List API keys for authenticated user
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: List API keys
+        '401':
+          description: Unauthorized
+    post:
+      summary: Create a new API key
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+  /api/keys/{id}/revoke:
+    post:
+      summary: Revoke an API key
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Revoked
+        '401':
+          description: Unauthorized
+        '404':
+          description: Key not found
+        '409':
+          description: Cannot revoke only active key
+  /f/{formId}:
+    post:
+      summary: Public form submission endpoint
+      parameters:
+        - in: path
+          name: formId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  type: object
+                  additionalProperties: true
+                recaptchaToken:
+                  type: string
+                website:
+                  type: string
+      responses:
+        '201':
+          description: Accepted and created
+        '202':
+          description: Accepted but marked spam
+        '400':
+          description: Validation error (payload or per-form schema mismatch)
+        '404':
+          description: Form not found
+        '429':
+          description: Rate limited
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

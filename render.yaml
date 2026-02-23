@@ -2,7 +2,7 @@ services:
   - type: web
     name: headless-form-api
     runtime: node
-    repo: https://github.com/your-org/your-repo
+    repo: https://github.com/firasmosbehi/headless-backend-form
     plan: starter
     rootDir: .
     buildCommand: npm install

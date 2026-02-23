@@ -3,7 +3,7 @@ services:
     name: headless-form-api
     runtime: node
     repo: https://github.com/firasmosbehi/headless-backend-form
-    plan: starter
+    plan: free
     rootDir: .
     buildCommand: npm install
     startCommand: npm run db:migrate && npm start
